@@ -4,9 +4,33 @@ from web3 import Web3
 w3 = Web3(Web3.HTTPProvider("https://rpc.gnosischain.com", request_kwargs={'timeout': 60}))
 
 with open('indexee-abi.json') as abi_file:
-    abi = abi_file.read()
+    abi_string = abi_file.read()
 
-indexee_address = "0x74Eb4619cBC29F5dd4a6Af16b868eFBf9552B34d"
+abi = json.loads(abi_string)
+
+indexee_address = "0xcFaD25b3570533867CA8C81E8fC4dD53242088bf"
+
+event_abi = '''{
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "setter",
+                "type": "address"
+                },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "newVal",
+                "type": "uint256"
+                }
+            ],
+        "name": "logNewVal",
+        "type": "event"
+        }'''
+
+event = json.loads(event_abi)
 
 Indexee = w3.eth.contract(abi = abi)
 
