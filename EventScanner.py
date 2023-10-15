@@ -80,14 +80,14 @@ class EventScanner:
 
     Can be used for real-time scans, as it detects minor chain reorganisation and rescans.
     Unlike the easy web3.contract.Contract, this scanner can scan events from multiple contracts at once.
-    For example, you can get all transfers from all tokens in the same scan.
+    For example, you can get all events from multiple contracts in the same scan.
 
     You *should* disable the default `http_retry_request_middleware` on your provider for Web3,
     because it cannot correctly throttle and decrease the `eth_getLogs` block number range.
     """
 
     def __init__(self, w3: Web3, contract: Contract, state: EventScannerState, events: List, filters: Dict[str, Any],
-                 max_chunk_scan_size: int = 10000, max_request_retries: int = 30, request_retry_seconds: float = 3.0):
+            max_chunk_scan_size: int = 10000, max_request_retries: int = 30, request_retry_seconds: float = 3.0):
         """
         :param contract: Contract
         :param events: List of web3 Event we scan
@@ -186,19 +186,19 @@ class EventScanner:
             # Callable that takes care of the underlying web3 call
             def _fetch_events(_start_block, _end_block):
                 return _fetch_events_for_all_contracts(self.w3,
-                                                       event_type,
-                                                       self.filters,
-                                                       from_block=_start_block,
-                                                       to_block=_end_block)
+                        event_type,
+                        self.filters,
+                        from_block=_start_block,
+                        to_block=_end_block)
 
             # Do `n` retries on `eth_getLogs`,
             # throttle down block range if needed
             end_block, events = _retry_web3_call(
-                _fetch_events,
-                start_block=start_block,
-                end_block=end_block,
-                retries=self.max_request_retries,
-                delay=self.request_retry_seconds)
+                    _fetch_events,
+                    start_block=start_block,
+                    end_block=end_block,
+                    retries=self.max_request_retries,
+                    delay=self.request_retry_seconds)
 
             for evt in events:
                 idx = evt["logIndex"]  # Integer of the log index position in the block, null when its pending
@@ -235,7 +235,7 @@ class EventScanner:
         and our heuristics try to accelerate block fetching (chunk size) until we see the first event.
 
         These heuristics exponentially increase the scan chunk size depending on if we are seeing events or not.
-        When any transfers are encountered, we are back to scanning only a few blocks at a time.
+        When any events are encountered, we are back to scanning only a few blocks at a time.
         It does not make sense to do a full chain scan starting from block 1, doing one JSON-RPC call per 20 blocks.
         """
 
@@ -250,7 +250,7 @@ class EventScanner:
         return int(current_chuck_size)
 
     def scan(self, start_block, end_block, start_chunk_size=20, progress_callback=Optional[Callable]) -> Tuple[
-        list, int]:
+            list, int]:
         """Perform a token balances scan.
 
         Assumes all balances in the database are valid before start_block (no forks sneaked in).
@@ -285,8 +285,8 @@ class EventScanner:
             # Print some diagnostics to logs to try to fiddle with real world JSON-RPC API performance
             estimated_end_block = current_block + chunk_size
             logger.debug(
-                f"Scanning token transfers for blocks: {current_block} - {estimated_end_block}, chunk size {chunk_size}, last chunk scan took {last_scan_duration}, last logs found {last_logs_found}"
-            )
+                    f"Scanning events for blocks: {current_block} - {estimated_end_block}, chunk size {chunk_size}, last chunk scan took {last_scan_duration}, last logs found {last_logs_found}"
+                    )
 
             start = time.time()
             actual_end_block, end_block_timestamp, new_entries = self.scan_chunk(current_block, estimated_end_block)
@@ -337,7 +337,7 @@ def _retry_web3_call(func, start_block, end_block, retries, delay) -> Tuple[int,
             if i < retries - 1:
                 # Give some more verbose info than the default middleware
                 logger.warning(
-                    f"Retrying events for block range {start_block} - {end_block} ({end_block-start_block}) failed with {e} , retrying in {delay} seconds")
+                        f"Retrying events for block range {start_block} - {end_block} ({end_block-start_block}) failed with {e} , retrying in {delay} seconds")
                 # Decrease the `eth_getBlocks` range
                 end_block = start_block + ((end_block - start_block) // 2)
                 # Let the JSON-RPC to recover e.g. from restart
@@ -383,13 +383,13 @@ def _fetch_events_for_all_contracts(
     # More information here:
     # https://github.com/ethereum/web3.py/blob/e176ce0793dafdd0573acc8d4b76425b6eb604ca/web3/_utils/filters.py#L71
     data_filter_set, event_filter_params = construct_event_filter_params(
-        abi,
-        codec,
-        address=argument_filters.get("address"),
-        argument_filters=argument_filters,
-        fromBlock=from_block,
-        toBlock=to_block
-    )
+            abi,
+            codec,
+            address=argument_filters.get("address"),
+            argument_filters=argument_filters,
+            fromBlock=from_block,
+            toBlock=to_block
+            )
 
     logger.debug(f"Querying eth_getLogs with the following parameters: {event_filter_params}")
 
@@ -409,14 +409,9 @@ def _fetch_events_for_all_contracts(
         all_events.append(evt)
     return all_events
 
-
 if __name__ == "__main__":
-    # Simple demo that scans all the token transfers of RCC token (11k).
+    # Scans all indicated events of a contract.
     # The demo supports persistent state by using a JSON file.
-    # You will need an Ethereum node for this.
-    # Running this script will consume around 20k JSON-RPC calls.
-    # With locally running Geth, the script takes 10 minutes.
-    # The resulting JSON state file is 2.9 MB.
     import sys
     import json
     from web3.providers.rpc import HTTPProvider
@@ -424,37 +419,6 @@ if __name__ == "__main__":
     # We use tqdm library to render a nice progress bar in the console
     # https://pypi.org/project/tqdm/
     from tqdm import tqdm
-
-    # RCC has around 11k Transfer events
-    # https://etherscan.io/token/0x9b6443b0fb9c241a7fdac375595cea13e6b7807a
-    RCC_ADDRESS = "0x9b6443b0fB9C241A7fdAC375595cEa13e6B7807A"
-
-    # Reduced ERC-20 ABI, only Transfer event
-    ABI = """[
-        {
-            "anonymous": false,
-            "inputs": [
-                {
-                    "indexed": true,
-                    "name": "from",
-                    "type": "address"
-                },
-                {
-                    "indexed": true,
-                    "name": "to",
-                    "type": "address"
-                },
-                {
-                    "indexed": false,
-                    "name": "value",
-                    "type": "uint256"
-                }
-            ],
-            "name": "Transfer",
-            "type": "event"
-        }
-    ]
-    """
 
     class JSONifiedState(EventScannerState):
         """Store the state of scanned blocks and all events.
@@ -472,9 +436,9 @@ if __name__ == "__main__":
         def reset(self):
             """Create initial state of nothing scanned."""
             self.state = {
-                "last_scanned_block": 0,
-                "blocks": {},
-            }
+                    "last_scanned_block": 0,
+                    "blocks": {},
+                    }
 
         def restore(self):
             """Restore the last scan state from a file."""
@@ -518,50 +482,48 @@ if __name__ == "__main__":
                 self.save()
 
         def process_event(self, block_when: datetime.datetime, event: AttributeDict) -> str:
-            """Record a ERC-20 transfer in our database."""
+            """Record an event in our database."""
             # Events are keyed by their transaction hash and log index
             # One transaction may contain multiple events
             # and each one of those gets their own log index
 
-            # event_name = event.event # "Transfer"
             log_index = event.logIndex  # Log index within the block
-            # transaction_index = event.transactionIndex  # Transaction index within the block
             txhash = event.transactionHash.hex()  # Transaction hash
             block_number = event.blockNumber
 
-            # Convert ERC-20 Transfer event to our internal format
-            args = event["args"]
-            transfer = {
-                "from": args["from"],
-                "to": args.to,
-                "value": args.value,
-                "timestamp": block_when.isoformat(),
-            }
+            # cast non-JSON-serializable types in event data:
+            event_data = dict(event)
+            event_data["args"] = dict(event_data["args"])
+            event_data["transactionHash"] = event_data["transactionHash"].hex()
+            event_data["blockHash"] = event_data["blockHash"].hex()
 
+            print(f"event_data: {event_data}")
             # Create empty dict as the block that contains all transactions by txhash
             if block_number not in self.state["blocks"]:
                 self.state["blocks"][block_number] = {}
 
             block = self.state["blocks"][block_number]
             if txhash not in block:
-                # We have not yet recorded any transfers in this transaction
+                # We have not yet recorded any events in this transaction
                 # (One transaction may contain multiple events if executed by a smart contract).
                 # Create a tx entry that contains all events by a log index
                 self.state["blocks"][block_number][txhash] = {}
 
-            # Record ERC-20 transfer in our database
-            self.state["blocks"][block_number][txhash][log_index] = transfer
+            # Record events in our database
+            self.state["blocks"][block_number][txhash][log_index] = event_data
 
             # Return a pointer that allows us to look up this event later if needed
             return f"{block_number}-{txhash}-{log_index}"
 
     def run():
 
+        """
         if len(sys.argv) < 2:
             print("Usage: eventscanner.py http://your-node-url")
             sys.exit(1)
-
         api_url = sys.argv[1]
+        """
+        api_url = "https://rpc.gnosis.gateway.fm"
 
         # Enable logs to the stdout.
         # DEBUG is very verbose level
@@ -576,25 +538,50 @@ if __name__ == "__main__":
 
         w3 = Web3(provider)
 
-        # Prepare stub ERC-20 contract object
-        abi = json.loads(ABI)
-        ERC20 = w3.eth.contract(abi=abi)
+        ADDRESS = "0xcFaD25b3570533867CA8C81E8fC4dD53242088bf"
 
+        ABI = """
+    [
+        {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "setter",
+                "type": "address"
+                },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "newVal",
+                "type": "uint256"
+                }
+            ],
+        "name": "logNewVal",
+        "type": "event"
+        }
+    ]
+    """
+        abi = json.loads(ABI)
+        CONTRACT = w3.eth.contract(abi=abi)
+
+        deployed_at_block = 30454954 
         # Restore/create our persistent state
         state = JSONifiedState()
         state.restore()
 
         # chain_id: int, w3: Web3, abi: Dict, state: EventScannerState, events: List, filters: Dict, max_chunk_scan_size: int=10000
         scanner = EventScanner(
-            w3=w3,
-            contract=ERC20,
-            state=state,
-            events=[ERC20.events.Transfer],
-            filters={"address": RCC_ADDRESS},
-            # How many maximum blocks at the time we request from JSON-RPC
-            # and we are unlikely to exceed the response size limit of the JSON-RPC server
-            max_chunk_scan_size=10000
-        )
+                w3=w3,
+                contract=CONTRACT,
+                state=state,
+                events=[CONTRACT.events.logNewVal],
+                filters={"address": ADDRESS},
+                # How many maximum blocks at the time we request from JSON-RPC
+                # and we are unlikely to exceed the response size limit of the JSON-RPC server
+                max_chunk_scan_size=10000
+                )
 
         # Assume we might have scanned the blocks all the way to the last Ethereum block
         # that mined a few seconds before the previous scan run ended.
@@ -606,7 +593,7 @@ if __name__ == "__main__":
 
         # Scan from [last block scanned] - [latest ethereum block]
         # Note that our chain reorg safety blocks cannot go negative
-        start_block = max(state.get_last_scanned_block() - chain_reorg_safety_blocks, 0)
+        start_block = max(state.get_last_scanned_block() - chain_reorg_safety_blocks, deployed_at_block)
         end_block = scanner.get_suggested_scan_end_block()
         blocks_to_scan = end_block - start_block
 
