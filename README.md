@@ -1,66 +1,10 @@
-## Foundry
+## Fast And Trustless Framework for Event Data Syncing (FATFEDS)
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+This is an MVP implementation of a Fast And Trustless Framework for Event Data Syncing (FATFEDS). Applications can rapidly sync data by downloading a compressed file of past event data. That data is trustless as it is compared to an an on-chain hash chain of all event data via a single on-chain data read of the tip of the hash chain.
 
-Foundry consists of:
-
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+The system comprises:
+1. **HOPR Ledger**: A base contract that implements the on-chain hash chain.
+2. **Indexee contract**: A contract that is derived from HOPR Ledger and which utilizes it's hash chain for event data.
+3. **Indexer service**: A service that consumes legacy on-chain event data (which is slow) to establish a database of event data.
+4. **Event data server**: The (compressed) database of indexed event data is served to clients.
+5. **Event data verification client**: A client that pulls data from an event data server, calculates the tip of the hash chain of that data and compares it to the tip of the chain that's read from on-chain
