@@ -12,9 +12,9 @@ class JSONifiedState(EventScannerState):
     Simple load/store massive JSON on start up.
     """
 
-    def __init__(self):
+    def __init__(self, dbFileName):
         self.state = None
-        self.fname = "test-state.json"
+        self.fname = dbFileName
         # How many second ago we saved the JSON file
         self.last_save = 0
 

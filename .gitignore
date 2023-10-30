@@ -1,5 +1,5 @@
 *.swp
-test-state.json
+indexDb.json
 
 # Compiler files
 cache/

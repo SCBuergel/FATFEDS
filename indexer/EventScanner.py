@@ -221,8 +221,6 @@ class EventScanner:
         :return: [All processed events, number of chunks used]
         """
 
-        assert start_block <= end_block
-
         current_block = start_block
 
         # Scan in chunks, commit between
