@@ -15,6 +15,7 @@ import json
 from web3.providers.rpc import HTTPProvider
 from web3 import Web3
 from flask import Flask, send_from_directory
+import os
 
 from EventScannerState import EventScannerState
 from JSONifiedState import JSONifiedState
@@ -25,8 +26,6 @@ from EventScanner import EventScanner
 class indexer:
     def __init__(
             self,
-            dbFolder,
-            dbFileName,
             rpcProviderUrl,
             contractAddress,
             contractAbi,
@@ -36,11 +35,11 @@ class indexer:
             chainReorgSafetyBlocks=10,
             serveDb=True,
             dbServerPort=8000,
-            indexerDbFileName="indexDb.json"
+            indexerDbFileName="indexDb.json",
+            indexerDbFolder="./"
             ):
         
-        self.dbFolder = dbFolder
-        self.dbFileName = dbFileName
+
         self.rpcProviderUrl = rpcProviderUrl
         self.contractAddress = contractAddress
         self.contractAbi = contractAbi
@@ -63,8 +62,12 @@ class indexer:
         abi = json.loads(self.contractAbi)
         CONTRACT = w3.eth.contract(abi=abi)
 
+        if not os.path.exists(indexerDbFolder):
+            os.makedirs(indexerDbFolder)
+
         # Restore/create our persistent state
-        self.state = JSONifiedState(indexerDbFileName)
+        print(f"index db file name: {indexerDbFolder + indexerDbFileName}")
+        self.state = JSONifiedState(indexerDbFolder + indexerDbFileName)
         self.state.restore()
 
         events = [CONTRACT.events[a] for a in self.eventNameListToIndex]
@@ -113,8 +116,8 @@ class indexer:
 
 def run():
     ind = indexer(
-            dbFolder="dbFolder",
-            dbFileName="indexerStateDb.json",
+            indexerDbFolder="dbFolder/",
+            indexerDbFileName="indexerStateDb.json",
             rpcProviderUrl="https://rpc.gnosis.gateway.fm",
             contractAddress="0xcFaD25b3570533867CA8C81E8fC4dD53242088bf",
             contractAbi="""
@@ -153,5 +156,5 @@ run()
 app = Flask(__name__)
 @app.route("/json/<filename>")
 def serve_json(filename):
-    return send_from_directory("./state_db/", filename, as_attachment=False, mimetype="application/json")
+    return send_from_directory("./dbFolder", filename, as_attachment=False, mimetype="application/json")
 app.run(port = 8000)
